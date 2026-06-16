@@ -1,0 +1,10 @@
+{
+  "extends": "@repo/config/node",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

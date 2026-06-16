@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Role {
+  CLIENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  GITHUB
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  TWO_FACTOR
+  TWO_FACTOR_SESSION
+  REGISTRATION_COMPLETION 
+}
+
+enum UserStatus {
+  PENDING      // email not verified
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// ─────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────
+
+model User {
+  id                String       @id @default(cuid())
+  email             String       @unique
+  username          String?      @unique
+  passwordHash      String?      // null if OAuth-only account
+
+  role              Role         @default(CLIENT)
+  status            UserStatus   @default(PENDING)
+  provider          AuthProvider @default(EMAIL)
+  providerId        String?      // OAuth provider user ID
+
+  // Profile
+  firstName         String?
+  lastName          String?
+  avatarUrl         String?
+  phone             String?      @unique
+
+  // Email verification
+  emailVerified     Boolean      @default(false)
+  emailVerifiedAt   DateTime?
+
+  // 2FA
+  twoFactorEnabled  Boolean      @default(false)
+  twoFactorSecret   String?      // TOTP secret (encrypted)
+
+  // KYC (for crypto compliance)
+  kycVerified       Boolean      @default(false)
+  kycSubmittedAt    DateTime?
+  kycVerifiedAt     DateTime?
+
+  // Security
+  failedLoginCount  Int          @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  passwordChangedAt DateTime?
+
+  // Admin tracking
+  createdBy         String?      // userId of admin who created this account
+  suspendedBy       String?
+  suspendedReason   String?
+  suspendedAt       DateTime?
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  tokens            Token[]
+  sessions          Session[]
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]
+  profile           UserProfile?
+  adminProfile      AdminProfile?
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// EXTENDED PROFILES
+// ─────────────────────────────────────────
+
+model UserProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // KYC / identity
+  dateOfBirth     DateTime?
+  nationality     String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
+
+  // Preferences
+  defaultCurrency String    @default("USD")
+  timezone        String    @default("UTC")
+  notifyByEmail   Boolean   @default(true)
+  notifyBySms     Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("user_profiles")
+}
+
+model AdminProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  department  String?
+  permissions Json      // Managed safely inside business logic, avoiding old MySQL engine JSON defaults errors
+  notes       String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("admin_profiles")
+}
+
+// ─────────────────────────────────────────
+// AUTH TOKENS  (email verify / password reset / 2fa)
+// ─────────────────────────────────────────
+
+model Token {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      TokenType
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId, type])
+  @@map("tokens")
+}
+
+// ─────────────────────────────────────────
+// REFRESH TOKENS  (JWT rotation)
+// ─────────────────────────────────────────
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash   String    @unique   // store hashed, never raw
+  family      String              // token family for rotation detection
+  isRevoked   Boolean   @default(false)
+  revokedAt   DateTime?
+
+  // ✅ Self-referencing link for explicit chain integrity tracking
+  replacedBy  String?   @unique
+  successor   RefreshToken? @relation("RotationChain", fields: [replacedBy], references: [tokenHash], onDelete: SetNull)
+  predecessor RefreshToken? @relation("RotationChain")
+
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([family])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────
+// SESSIONS  (server-side session tracking)
+// ─────────────────────────────────────────
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionToken String    @unique
+  isActive     Boolean   @default(true)
+  ipAddress    String?
+  userAgent    String?
+  device       String?
+
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([sessionToken])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOG  (critical for crypto / fintech)
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String   // e.g. "USER_LOGIN", "PASSWORD_RESET", "ROLE_CHANGED"
+  entity     String?  // e.g. "User", "Transaction"
+  entityId   String?
+  oldValue   Json?
+  newValue   Json?
+  metadata   Json?    // Store user snapshots here so metrics aren't broken on account wipe
+  ipAddress  String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

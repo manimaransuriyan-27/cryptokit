@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/config/react",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "exclude": ["bucket"]
+}

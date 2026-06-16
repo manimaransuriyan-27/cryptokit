@@ -1,0 +1,31 @@
+@import '@repo/shared/globals.css';
+
+html, body, #root, #root>div {
+  margin: 0;
+  height: 100%;
+}
+
+@keyframes premiumGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-premium-bg {
+  background-size: 400% 400% !important;
+  animation: premiumGradient 15s ease infinite;
+}
+
+.animate-infinite-loading {
+  animation: infinite-loading 1.5s infinite linear
+}
+@keyframes infinite-loading {
+   0% { left: -33%; }
+   100% { left: 100%; }
+ }

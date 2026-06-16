@@ -1,0 +1,52 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@remixicon/react": "^4.9.0",
+    "@repo/hooks": "workspace:*",
+    "@repo/services": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/utils": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-query-devtools": "catalog:",
+    "@uidotdev/usehooks": "^2.4.1",
+    "antd": "^6.4.3",
+    "cobe": "^0.6.5",
+    "countries-list": "^3.3.0",
+    "hugeicons-react": "^0.4.0",
+    "lucide-react": "^1.17.0",
+    "mobx": "^6.15.4",
+    "mobx-keystone": "^1.21.0",
+    "mobx-react-lite": "^4.1.1",
+    "react": "catalog:",
+    "react-cookie-consent": "^10.0.1",
+    "react-dom": "catalog:",
+    "react-router-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@repo/config": "workspace:*",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^17.2.0",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.54.0",
+    "vite": "^7.3.2"
+  }
+}
